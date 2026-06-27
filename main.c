@@ -1,58 +1,121 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "file.h"
 
+
+#define MAX 2048
 
 void showMenu(){
     printf("\n---------- Download Manager ----------\n");
     printf("1- Add URL \n");
     printf("2- Download direct\n");
-    printf("3- exit 0 \n");
+    printf("3- Download links\n");
+
+    printf("0- exit  \n");
 }
 
-void handle_direct_download(){
 
-    char command[1024];
-    char url[512];
+void handle_direct_download(int status)
+{
+    char command[4096];
+    char line[MAX];
 
-    printf("URL:\n");
+    if (status == 0)
+    {
+        printf("URL: ");
 
-    // clear buffer
-    while(getchar()!='\n');
+        fgets(line, sizeof(line), stdin);
 
-    fgets(url,sizeof(url),stdin);  // get input 
+        if (line[0] == '\n')
+            fgets(line, sizeof(line), stdin);
 
-    url[strcspn(url,"\n")] = 0; // clear new line
+        line[strcspn(line, "\n")] = '\0';
 
-    snprintf(command, sizeof(command),"wget %s 2>&1",url);
+        snprintf(command, sizeof(command),
+                 "wget -c \"%s\" 2>&1", line);
 
-    printf("Runngin : %s\n",command);
+        printf("Running: %s\n", command);
 
-    FILE *fp = popen(command,"r"); // run command
+        FILE *pipe = popen(command, "r");
 
-    if(fp==NULL){
-        perror("Error to popne.");
-        return;
+        if (pipe == NULL)
+        {
+            perror("popen");
+            return;
+        }
+
+        while (fgets(line, sizeof(line), pipe) != NULL)
+            printf("%s", line);
+
+        int result = pclose(pipe);
+
+        if (result == 0)
+            printf("Download completed.\n");
+        else
+            printf("wget exited with code %d\n", result);
     }
+    else
+    {
+        char filename[256];
 
-    char line[1024];
-    while(fgets(line,sizeof(line),fp)!=NULL){
-        printf("%s",line); // show eveyline
-    }
+        printf("Enter file name: ");
+        scanf("%255s", filename);
+        getchar();
 
-    int status=pclose(fp);
-    if(status==0){
-        printf("ok");
-    }else{
-        printf("Error output code %d\n.",status);
+        if (!fileExist(filename))
+        {
+            printf("File does not exist.\n");
+            return;
+        }
+
+        FILE *fp = fopen(filename, "r");
+
+        if (fp == NULL)
+        {
+            perror("fopen");
+            return;
+        }
+
+        while (readLine(fp, line, sizeof(line)))
+        {
+            line[strcspn(line, "\n")] = '\0';
+
+            if (strlen(line) == 0)
+                continue;
+
+            snprintf(command, sizeof(command),
+                     "wget -c \"%s\" 2>&1", line);
+
+            printf("\nRunning: %s\n", command);
+
+            FILE *pipe = popen(command, "r");
+
+            if (pipe == NULL)
+            {
+                perror("popen");
+                continue;
+            }
+
+            char output[MAX];
+
+            while (fgets(output, sizeof(output), pipe) != NULL)
+                printf("%s", output);
+
+            int result = pclose(pipe);
+
+            if (result != 0)
+                printf("wget exited with code %d\n", result);
+        }
+
+        fclose(fp);
     }
 }
 
 int main(){
-
     int choice;
-    int running = 1;
-    while(running){
+
+    while(1){
         showMenu();
 
         if(scanf("%d", &choice)!=1){
@@ -61,19 +124,46 @@ int main(){
             continue;
         }
 
+        if(choice==0){
+            return 0;
+        }else if(choice==1){
+            // printf("1- Add a link")
+            
+        }
         switch(choice){
-            case 1 : 
-            printf("Hi");
+            case 1 :
+                
+            char filename[50];
+            char word[MAX];
+
+            printf("Enter file name : ");
+            scanf("%49s",filename);
+            getchar();
+
+            if(fileExist(filename))
+                printf("File exist %s\n.",filename);
+            else
+                printf("File does not exist %s.\n",filename);
+            
+            writeFile(filename);
+
+
             break;
+            
+
             case 2:
-            handle_direct_download();
+            handle_direct_download(0);
+            break;
+            case 3:
+            handle_direct_download(1);
             break;
             case 0:
-            running=0;
             break;
             default:
             printf("\nChoice is not valid");
         }
+
+
     }
     return 0;
 }
