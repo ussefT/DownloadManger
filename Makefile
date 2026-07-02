@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -02
+CFLAGS = -Wall -Wextra -O2
 SRC=src/main.c src/file.c
 OUT = download-manager
 
@@ -13,4 +13,3 @@ all:
 
 clean:
 	rm -f download-manager download-manager.exe
-	
