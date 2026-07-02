@@ -5,172 +5,170 @@ on:
     branch:
       - main
 
+  pull_request:
 
-  
+  workflow_dispatch:
+
 jobs:
 
-    # For x86_64
-    linux:
+  linux:
+    name: Ubuntu Build
+    runs-on: ubuntu-latest
 
-        name: Ubuntu Build
-        runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-        steps:
-          - name: Checkout
-            uses: actions/checkout@v4
+      - name: Install packages
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential wget rpm
 
-          
-          - name: Install package
-            run: |
-              sudo apt update
-              sudo apt install -y build-essential wget rpm
+      - name: Build
+        run: make
 
-          - name: Build
-            run: make
+      - name: Create tar.gz
+        run: |
+          mkdir release
+          cp download-manager release/
+          tar czf download-manager-linux-x86_64.tar.gz release
 
-          - name: Create tar.gz
-            run: |
-              mkdir release
-              cp download-manager release/
-              tar czf download-manager-linux-x86_64.tar.gz release
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: download-manager-linux-x86_64.tar.gz
 
-          - name: Upload tar.gz
-            uses: actions/upload-artifact@v4
-            with:
-              name: linux-x86_64
-              path: download-manager-linux-x86_64.tar.gz
+  windows:
+    name: Windows Build
+    runs-on: windows-latest
 
-    windwos:
-      name: Windows Build
-      runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      steps:
-        - uses: action/checkout@v4
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          install: gcc make wget
 
-        - name: Setup MSYS2
-          uses: msys2/setup-msys2@v2
-          with:
-            install: gcc make wget
+      - name: Build
+        shell: msys2 {0}
+        run: make
 
-        - name: Build
-          shell: msys2 {0}
-          run: make
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: download-manager.exe
 
-        - name: Upload
-          uses: actions/upload-artifact@v4
-          with: 
-            name: windows-x86_64
-            path: download-manager.exe
+  macos:
+    name: macOS Build
+    runs-on: macos-latest
 
-    macos:
-      name: macOS Build
-      runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      steps:
-        - uses: actions/checkout@v4
+      - name: Install wget
+        run: brew install wget
 
-        - name: Install wget
-          run: brew install wget
+      - name: Build
+        run: make
 
-        - name: Build
-          run: make
+      - name: Package
+        run: |
+          mkdir release
+          cp download-manager release/
+          tar czf download-manager-macos.tar.gz release
 
-        - name: Package
-          run: |
-            mkdir release
-            cp download-manager release/
-            tar czf download-manager-macos.tar.gz release
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: download-manager-macos.tar.gz
 
-        - name: Upload
-          uses: actions/upload-artifact@v4
-          with:
-            name: macos
-            path: download-manager-macos.tar.gz
+  deb:
+    name: Debian Package
+    runs-on: ubuntu-latest
 
-    deb:
-      name: Debian Package
-      runs-on: ubuntu-latest
+    needs: linux
 
-      needs: linux
+    steps:
+      - uses: actions/checkout@v4
 
-      steps:
-        - uses: actions/checkout@v4
+      - run: |
+          sudo apt update
+          sudo apt install -y build-essential dpkg-dev
 
-        - run: |
-            sudo apt update
-            sudo apt install -y build-essential dpkg-dev
+      - run: make
 
-        - run: make
+      - name: Build deb
+        run: |
 
-        - name: Build deb
-          run: |
+          mkdir -p pkg/DEBIAN
+          mkdir -p pkg/usr/bin
 
-            mkdir -p pkg/DEBIAN
-            mkdir -p pkg/usr/bin
+          cp download-manager pkg/usr/bin/
 
-            cp download-manager pkg/usr/bin/
+          cat <<EOF > pkg/DEBIAN/control
+          Package: download-manager
+          Version: 1.0.0
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Your Name
+          Description: Terminal Download Manager using wget
+          EOF
 
-            cat <<EOF > pkg/DEBIAN/control
-            Package: download-manager
-            Version: 1.0.0
-            Section: utils
-            Priority: optional
-            Architecture: amd64
-            Maintainer: Your Name
-            Description: Terminal Download Manager using wget
-            EOF
+          dpkg-deb --build pkg
 
-            dpkg-deb --build pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: pkg.deb
 
-        - uses: actions/upload-artifact@v4
-          with:
-            name: deb-package
-            path: pkg.deb
+  rpm:
+    name: RPM Package
+    runs-on: ubuntu-latest
 
-    rpm:
-      name: RPM Package
-      runs-on: ubuntu-latest
+    needs: linux
 
-      needs: linux
+    steps:
+      - uses: actions/checkout@v4
 
-      steps:
-        - uses: actions/checkout@v4
+      - run: |
+          sudo apt update
+          sudo apt install -y rpm gcc make
 
-        - run: |
-            sudo apt update
-            sudo apt install -y rpm gcc make
+      - run: make
 
-        - run: make
+      - run: |
 
-        - run: |
+          mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
-            mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          cp download-manager rpmbuild/SOURCES/
 
-            cp download-manager rpmbuild/SOURCES/
+          cat <<EOF > rpmbuild/SPECS/download-manager.spec
+          Name: download-manager
+          Version: 1.0
+          Release: 1
+          Summary: Terminal Download Manager
+          License: MIT
 
-            cat <<EOF > rpmbuild/SPECS/download-manager.spec
-            Name: download-manager
-            Version: 1.0
-            Release: 1
-            Summary: Terminal Download Manager
-            License: MIT
+          %description
+          Terminal Download Manager
 
-            %description
-            Terminal Download Manager
+          %install
+          mkdir -p %{buildroot}/usr/bin
+          cp %{SOURCE0} %{buildroot}/usr/bin/download-manager
 
-            %install
-            mkdir -p %{buildroot}/usr/bin
-            cp %{SOURCE0} %{buildroot}/usr/bin/download-manager
+          %files
+          /usr/bin/download-manager
+          EOF
 
-            %files
-            /usr/bin/download-manager
-            EOF
+          rpmbuild \
+          --define "_topdir $(pwd)/rpmbuild" \
+          -bb rpmbuild/SPECS/download-manager.spec
 
-            rpmbuild \
-            --define "_topdir $(pwd)/rpmbuild" \
-            -bb rpmbuild/SPECS/download-manager.spec
-
-        - uses: actions/upload-artifact@v4
-          with:
-            name: rpm-package
-            path: rpmbuild/RPMS/**/*.rpm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: rpmbuild/RPMS/**/*.rpm
