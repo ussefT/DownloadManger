@@ -2,11 +2,9 @@ name: Build DownlaodManager Application
 
 on:
   push:
-  branches:
-    - main
-  
-  tags:
-    - "v*"
+    branch:
+      - main
+
 
   
 jobs:
