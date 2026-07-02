@@ -21,7 +21,6 @@ jobs:
 
           
           - name: Install package
-            if: runner.os=="Linux"
             run: |
               sudo apt update
               sudo apt install -y build-essential wget rpm
