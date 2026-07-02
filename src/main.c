@@ -6,12 +6,20 @@
 
 #define MAX 2048
 
+void clear_screen(void){
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
 void showMenu(){
     printf("\n---------- Download Manager ----------\n");
     printf("1- Add URL \n");
     printf("2- Download direct\n");
     printf("3- Download links\n");
-
+    
     printf("0- exit  \n");
 }
 
@@ -112,7 +120,10 @@ void handle_direct_download(int status)
     }
 }
 
-int main(){
+int main(void){
+    
+    clear_screen();
+
     int choice;
 
     while(1){
