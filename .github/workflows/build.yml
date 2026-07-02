@@ -49,7 +49,7 @@ jobs:
         - uses: action/checkout@v4
 
         - name: Setup MSYS2
-          ueses: msys2/setup-msys2@v2
+          uses: msys2/setup-msys2@v2
           with:
             install: gcc make wget
 
