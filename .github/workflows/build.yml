@@ -35,7 +35,7 @@ jobs:
               tar czf download-manager-linux-x86_64.tar.gz release
 
           - name: Upload tar.gz
-            uses: actions/upload-artfact@v4
+            uses: actions/upload-artifact@v4
             with:
               name: linux-x86_64
               path: download-manager-linux-x86_64.tar.gz
